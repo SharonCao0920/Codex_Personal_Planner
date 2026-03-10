@@ -1,6 +1,7 @@
 const AUTH_HASH_KEY = 'pp_auth_hash'
 const AUTH_SALT_KEY = 'pp_auth_salt'
 const AUTH_SESSION_KEY = 'pp_auth_session'
+const AUTH_USER_KEY = 'pp_auth_user'
 
 const toHex = (buffer: ArrayBuffer): string => {
   const bytes = new Uint8Array(buffer)
@@ -33,18 +34,21 @@ export const getAuthMode = async (): Promise<'setup' | 'locked' | 'unlocked'> =>
   return 'locked'
 }
 
-export const createAuth = async (password: string, remember: boolean): Promise<void> => {
+export const createAuth = async (username: string, password: string, remember: boolean): Promise<void> => {
   const salt = getSalt()
   const hash = await sha256Hex(`${salt}:${password}`)
   localStorage.setItem(AUTH_SALT_KEY, salt)
   localStorage.setItem(AUTH_HASH_KEY, hash)
+  localStorage.setItem(AUTH_USER_KEY, username.trim())
   setAuthSession(true, remember)
 }
 
-export const verifyAuth = async (password: string, remember: boolean): Promise<boolean> => {
+export const verifyAuth = async (username: string, password: string, remember: boolean): Promise<boolean> => {
   const salt = localStorage.getItem(AUTH_SALT_KEY)
   const hash = localStorage.getItem(AUTH_HASH_KEY)
   if (!salt || !hash) return false
+  const storedUser = localStorage.getItem(AUTH_USER_KEY)
+  if (!storedUser || storedUser !== username.trim()) return false
   const attempt = await sha256Hex(`${salt}:${password}`)
   const ok = attempt === hash
   if (ok) setAuthSession(true, remember)
@@ -70,6 +74,11 @@ export const setAuthSession = (active: boolean, remember: boolean) => {
   }
 }
 
+export const getStoredUsername = (): string => {
+  return localStorage.getItem(AUTH_USER_KEY) ?? ''
+}
+
 export const hasSession = (): boolean => {
   return localStorage.getItem(AUTH_SESSION_KEY) === 'true' || sessionStorage.getItem(AUTH_SESSION_KEY) === 'true'
 }
+

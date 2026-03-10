@@ -3,7 +3,7 @@ import './App.css'
 import type { DailyPlan, Note, Section, Task, TaskCheckin } from './domain/types'
 import { addDays, formatDateISO, parseDateISO, todayISO } from './domain/date'
 import { generateDailyPlan } from './domain/planner'
-import { clearAuthSession, createAuth, getAuthMode, verifyAuth } from './domain/auth'
+import { clearAuthSession, createAuth, getAuthMode, getStoredUsername, verifyAuth } from './domain/auth'
 import {
   deleteNote,
   deleteNoteEmbedding,
@@ -79,6 +79,7 @@ export default function App() {
   const [authRemember, setAuthRemember] = useState(true)
   const [authError, setAuthError] = useState('')
   const [authWorking, setAuthWorking] = useState(false)
+  const [authUsername, setAuthUsername] = useState('')
 
   const [noteEmbeddings, setNoteEmbeddings] = useState<Record<string, number[]>>({})
   const [semanticMatches, setSemanticMatches] = useState<Note[]>([])
@@ -89,88 +90,97 @@ export default function App() {
   const [selectedNoteDate, setSelectedNoteDate] = useState(todayISO())
   const [noteAnswer, setNoteAnswer] = useState('')
 
+  useEffect(() => {
+    const loadAuth = async () => {
+      const mode = await getAuthMode()
+      const storedUser = getStoredUsername()
+      setAuthUsername(storedUser)
+      if (mode === 'locked' && !storedUser) {
+        setAuthMode('setup')
+        return
+      }
+      setAuthMode(mode)
+    }
+    loadAuth()
+  }, [])
+
   const refreshPlanDates = async () => {
+
+
     const plans = await listDailyPlans()
     const dates = plans.map((item) => item.date).sort((a, b) => b.localeCompare(a))
     setPlanDates(dates.length > 0 ? dates : [todayISO()])
   }
 
   useEffect(() => {
-    const loadAuth = async () => {
-      const mode = await getAuthMode()
-      setAuthMode(mode)
-    }
-    loadAuth()
-  }, [])
+  if (authMode !== 'unlocked') return
+  const load = async () => {
+    await initDefaults()
+    const [loadedSections, loadedTasks, loadedNotes, embeddings, semanticPref] = await Promise.all([
+      listSections(),
+      listTasks(),
+      listNotes(),
+      listNoteEmbeddings(),
+      getMeta('semanticEnabled'),
+    ])
+    setSections(loadedSections)
+    setTasks(loadedTasks)
+    setNotes(loadedNotes)
+    setSelectedNoteDate(todayISO())
+    if (semanticPref) setSemanticEnabled(semanticPref === 'true')
+    setNoteEmbeddings(
+      embeddings.reduce<Record<string, number[]>>((acc, item) => {
+        acc[item.id] = item.vector
+        return acc
+      }, {})
+    )
 
-  useEffect(() => {
-    if (authMode !== 'unlocked') return
-    const load = async () => {
-      await initDefaults()
-      const [loadedSections, loadedTasks, loadedNotes, embeddings, semanticPref] = await Promise.all([
-        listSections(),
-        listTasks(),
-        listNotes(),
-        listNoteEmbeddings(),
-        getMeta('semanticEnabled'),
-      ])
-      setSections(loadedSections)
-      setTasks(loadedTasks)
-      setNotes(loadedNotes)
-      setSelectedNoteDate(todayISO())
-      if (semanticPref) setSemanticEnabled(semanticPref === 'true')
-      setNoteEmbeddings(
-        embeddings.reduce<Record<string, number[]>>((acc, item) => {
-          acc[item.id] = item.vector
-          return acc
-        }, {})
-      )
+    const today = todayISO()
+    const yesterday = formatDateISO(addDays(parseDateISO(today), -1))
+    const yesterdayPlan = await getDailyPlanByDate(yesterday)
 
-      const today = todayISO()
-      const yesterday = formatDateISO(addDays(parseDateISO(today), -1))
-      const yesterdayPlan = await getDailyPlanByDate(yesterday)
+    await refreshPlanDates()
 
-      await refreshPlanDates()
-
-      if (yesterdayPlan && yesterdayPlan.completionPercent === undefined) {
-        const initialCheckins: Record<string, TaskCheckin> = {}
-        for (const task of loadedTasks.filter((item) => yesterdayPlan.taskIds.includes(item.id))) {
-          initialCheckins[task.id] = {
-            status: task.status,
-            progress: task.status === 'in_progress' ? task.progress ?? 0 : undefined,
-          }
+    if (yesterdayPlan && yesterdayPlan.completionPercent === undefined) {
+      const initialCheckins: Record<string, TaskCheckin> = {}
+      for (const task of loadedTasks.filter((item) => yesterdayPlan.taskIds.includes(item.id))) {
+        initialCheckins[task.id] = {
+          status: task.status,
+          progress: task.status === 'in_progress' ? task.progress ?? 0 : undefined,
         }
-        setPendingCheckins(initialCheckins)
-        setPendingCheckinPlan(yesterdayPlan)
-        setSelectedPlanDate(yesterday)
-        setDailyPlan(yesterdayPlan)
-        setActiveTab(tabs.plan)
-        return
       }
+      setPendingCheckins(initialCheckins)
+      setPendingCheckinPlan(yesterdayPlan)
+      setSelectedPlanDate(yesterday)
+      setDailyPlan(yesterdayPlan)
+      setActiveTab(tabs.plan)
+      return
+    }
 
-      let plan = await getDailyPlanByDate(today)
-      if (!plan) {
-        const { plan: newPlan, updatedTasks } = generateDailyPlan({
-          tasks: loadedTasks,
-          sections: loadedSections,
-          date: today,
+    let plan = await getDailyPlanByDate(today)
+    if (!plan) {
+      const { plan: newPlan, updatedTasks } = generateDailyPlan({
+        tasks: loadedTasks,
+        sections: loadedSections,
+        date: today,
+      })
+      if (updatedTasks.length > 0) {
+        await Promise.all(updatedTasks.map((task) => upsertTask(task)))
+        setTasks((prev) => {
+          const updatedMap = new Map(updatedTasks.map((task) => [task.id, task]))
+          return prev.map((task) => updatedMap.get(task.id) ?? task)
         })
-        if (updatedTasks.length > 0) {
-          await Promise.all(updatedTasks.map((task) => upsertTask(task)))
-          setTasks((prev) => {
-            const updatedMap = new Map(updatedTasks.map((task) => [task.id, task]))
-            return prev.map((task) => updatedMap.get(task.id) ?? task)
-          })
-        }
-        await upsertDailyPlan(newPlan)
-        plan = newPlan
-        await refreshPlanDates()
       }
-      setDailyPlan(plan)
-      setSelectedPlanDate(today)
+      await upsertDailyPlan(newPlan)
+      plan = newPlan
+      await refreshPlanDates()
     }
-    load()
-  }, [authMode])
+    setDailyPlan(plan)
+    setSelectedPlanDate(today)
+  }
+
+  load()
+}, [authMode])
 
   useEffect(() => {
     setMeta('semanticEnabled', semanticEnabled ? 'true' : 'false')
@@ -432,7 +442,7 @@ export default function App() {
   }
 
 
-  const handleLock = () => {
+  const handleLogoff = () => {
     clearAuthSession()
     setAuthMode('locked')
     setAuthPassword('')
@@ -443,6 +453,10 @@ export default function App() {
   const handleSetupAuth = async () => {
     if (authWorking) return
     setAuthError('')
+    if (!authUsername.trim()) {
+      setAuthError('Username is required.')
+      return
+    }
     if (authPassword.length < 6) {
       setAuthError('Password must be at least 6 characters.')
       return
@@ -453,12 +467,12 @@ export default function App() {
     }
     try {
       setAuthWorking(true)
-      await createAuth(authPassword, authRemember)
+      await createAuth(authUsername, authPassword, authRemember)
       setAuthMode('unlocked')
       setAuthPassword('')
       setAuthConfirm('')
     } catch (error) {
-      setAuthError('Unable to create login. Try again.')
+      setAuthError('Unable to create access. Try again.')
     } finally {
       setAuthWorking(false)
     }
@@ -467,11 +481,15 @@ export default function App() {
   const handleLoginAuth = async () => {
     if (authWorking) return
     setAuthError('')
+    if (!authUsername.trim()) {
+      setAuthError('Username is required.')
+      return
+    }
     try {
       setAuthWorking(true)
-      const ok = await verifyAuth(authPassword, authRemember)
+      const ok = await verifyAuth(authUsername, authPassword, authRemember)
       if (!ok) {
-        setAuthError('Incorrect password.')
+        setAuthError('Incorrect username or password.')
         return
       }
       setAuthMode('unlocked')
@@ -556,55 +574,107 @@ export default function App() {
 
   const isToday = selectedPlanDate === todayISO()
   const noteResults = semanticMatches.length > 0 ? semanticMatches : searchResults.notes
-
   if (authMode !== 'unlocked') {
     return (
       <div className="auth-shell">
-        <div className="auth-card">
-          <h2>Planner Login</h2>
-          <p className="muted">Local-only access for this browser. You can add cloud auth later.</p>
-          {authMode === "loading" ? (
-            <p className="muted">Loading…</p>
-          ) : authMode === "setup" ? (
-            <>
-              <label className="auth-field">
-                <span>Create password</span>
-                <input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} />
-              </label>
-              <label className="auth-field">
-                <span>Confirm password</span>
-                <input type="password" value={authConfirm} onChange={(event) => setAuthConfirm(event.target.value)} />
-              </label>
-              <label className="auth-checkbox">
-                <input type="checkbox" checked={authRemember} onChange={(event) => setAuthRemember(event.target.checked)} />
-                Remember this device
-              </label>
-              {authError && <p className="auth-error">{authError}</p>}
-              <button className="primary-button" onClick={handleSetupAuth} disabled={authWorking}>
-                Create Login
-              </button>
-            </>
-          ) : (
-            <>
-              <label className="auth-field">
-                <span>Password</span>
-                <input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} />
-              </label>
-              <label className="auth-checkbox">
-                <input type="checkbox" checked={authRemember} onChange={(event) => setAuthRemember(event.target.checked)} />
-                Remember this device
-              </label>
-              {authError && <p className="auth-error">{authError}</p>}
-              <button className="primary-button" onClick={handleLoginAuth} disabled={authWorking}>
-                Unlock
-              </button>
-            </>
-          )}
+        <div className="auth-landing">
+          <div className="auth-intro">
+            <h1>Codex Personal Planner</h1>
+            <p>Track work, life, and health in one place, with daily plans and learning notes that build over time.</p>
+            <ul>
+              <li>Section-based task boards</li>
+              <li>Suggested daily plan with check-ins</li>
+              <li>Daily notes with semantic search</li>
+            </ul>
+            <div className="auth-hero">
+              <div className="hero-card">
+                <div className="hero-card__title">Today at a glance</div>
+                <div className="hero-card__row">
+                  <span>Design review</span>
+                  <span className="chip">Work</span>
+                </div>
+                <div className="hero-card__row">
+                  <span>Mobility workout</span>
+                  <span className="chip">Health</span>
+                </div>
+                <div className="hero-card__row">
+                  <span>Plan next week</span>
+                  <span className="chip">Life</span>
+                </div>
+              </div>
+              <div className="hero-panel">
+                <div className="hero-panel__title">Daily momentum</div>
+                <div className="hero-panel__bar">
+                  <span />
+                </div>
+                <div className="hero-panel__note">Notes cluster around recent wins, ready for recall.</div>
+              </div>
+            </div>
+            <footer className="auth-footer">
+              <span>Private by default</span>
+              <span>Offline-friendly</span>
+              <span>Future cloud sync ready</span>
+            </footer>
+          </div>
+          <div className="auth-card">
+            <h2>Planner Access</h2>
+            <p className="muted">Local-only access for this browser. You can add cloud auth later.</p>
+            {authMode === 'loading' ? (
+              <p className="muted">Loading…</p>
+            ) : authMode === 'setup' ? (
+              <>
+                <label className="auth-field">
+                  <span>Username</span>
+                  <input value={authUsername} onChange={(event) => setAuthUsername(event.target.value)} />
+                </label>
+                <label className="auth-field">
+                  <span>Create password</span>
+                  <input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} />
+                </label>
+                <label className="auth-field">
+                  <span>Confirm password</span>
+                  <input type="password" value={authConfirm} onChange={(event) => setAuthConfirm(event.target.value)} />
+                </label>
+                <label className="auth-checkbox">
+                  <input type="checkbox" checked={authRemember} onChange={(event) => setAuthRemember(event.target.checked)} />
+                  Remember this device
+                </label>
+                {authError && <p className="auth-error">{authError}</p>}
+                <button className="primary-button" onClick={handleSetupAuth} disabled={authWorking}>
+                  Create Access
+                </button>
+                <button className="ghost-button" onClick={() => setAuthMode('locked')}>
+                  Already have access? Log on
+                </button>
+              </>
+            ) : (
+              <>
+                <label className="auth-field">
+                  <span>Username</span>
+                  <input value={authUsername} onChange={(event) => setAuthUsername(event.target.value)} />
+                </label>
+                <label className="auth-field">
+                  <span>Password</span>
+                  <input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} />
+                </label>
+                <label className="auth-checkbox">
+                  <input type="checkbox" checked={authRemember} onChange={(event) => setAuthRemember(event.target.checked)} />
+                  Remember this device
+                </label>
+                {authError && <p className="auth-error">{authError}</p>}
+                <button className="primary-button" onClick={handleLoginAuth} disabled={authWorking}>
+                  Log on
+                </button>
+                <button className="ghost-button" onClick={() => setAuthMode('setup')}>
+                  Create access
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     )
   }
-
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -655,9 +725,7 @@ export default function App() {
             <button className="ghost-button" onClick={openNewNote}>
               New Note
             </button>
-            <button className="ghost-button" onClick={handleLock}>
-              Lock
-            </button>
+            <button className="ghost-button" onClick={handleLogoff}>Logoff</button>
           </div>
         </header>
 
@@ -893,6 +961,18 @@ export default function App() {
     </div>
   )
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
