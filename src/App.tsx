@@ -615,7 +615,9 @@ export default function App() {
           ) : activeTab === tabs.plan ? (
             <DailyPlanView
               plan={dailyPlan}
-              tasks={tasks}              getSectionColor={getSectionColor}
+              tasks={tasks}
+              sections={sections}
+              getSectionColor={getSectionColor}
               selectedDate={selectedPlanDate}
               availableDates={planDates}
               isToday={isToday}
@@ -625,7 +627,8 @@ export default function App() {
             />
           ) : activeTab === tabs.notes ? (
             <NotesWorkspace
-              notes={[...notes].sort((a, b) => b.date.localeCompare(a.date))}              selectedDate={selectedNoteDate}
+              notes={[...notes].sort((a, b) => b.date.localeCompare(a.date))}
+              selectedDate={selectedNoteDate}
               onDateChange={setSelectedNoteDate}
               onEdit={(note) => setEditingNote(note)}
               onDelete={handleDeleteNote}
@@ -683,7 +686,9 @@ export default function App() {
       </div>
 
       {editingTask && (
-        <TaskModal          task={editingTask}
+        <TaskModal
+          task={editingTask}
+          sections={sections}
           onSave={handleSaveTask}
           onDelete={handleDeleteTask}
           onClose={() => setEditingTask(undefined)}
@@ -691,14 +696,18 @@ export default function App() {
       )}
 
       {!editingTask && creatingTaskForSection && (
-        <TaskModal          initialSectionId={creatingTaskForSection}
+        <TaskModal
+          initialSectionId={creatingTaskForSection}
+          sections={sections}
           onSave={handleSaveTask}
           onClose={() => setCreatingTaskForSection(undefined)}
         />
       )}
 
       {editingNote && (
-        <NoteModal          note={editingNote}
+        <NoteModal
+          note={editingNote}
+          sections={sections}
           onSave={handleSaveNote}
           onDelete={handleDeleteNote}
           onClose={() => setEditingNote(undefined)}
@@ -706,7 +715,9 @@ export default function App() {
       )}
 
       {!editingNote && creatingNote && (
-        <NoteModal          onSave={handleSaveNote}
+        <NoteModal
+          onSave={handleSaveNote}
+          sections={sections}
           onClose={() => setCreatingNote(false)}
         />
       )}
@@ -763,6 +774,7 @@ export default function App() {
     </div>
   )
 }
+
 
 
 
