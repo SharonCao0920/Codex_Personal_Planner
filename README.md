@@ -1,2 +1,2 @@
 # Codex_Personal_Planner
-This is an complex planner created with Codex from OpenAI
+Asmall project built with OpenAI Codex to explore AI-assisted development and rapid idea-to-project workflows.
