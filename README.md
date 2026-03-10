@@ -41,4 +41,7 @@ These folders are ignored by git due to size. The app will still run without the
 
 ## Notes
 - Data is stored locally in the browser using IndexedDB.
+- Optional local login (password) lives only in the browser and is not real backend auth.
+- Deploying to Vercel does not change storage behavior; data remains per-device and per-browser.
+- Clearing browser data or switching devices will remove locally saved data unless a backend is added.
 - If you want semantic search on other machines, re-run the download script after cloning.

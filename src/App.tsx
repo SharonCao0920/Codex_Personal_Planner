@@ -3,6 +3,7 @@ import './App.css'
 import type { DailyPlan, Note, Section, Task, TaskCheckin } from './domain/types'
 import { addDays, formatDateISO, parseDateISO, todayISO } from './domain/date'
 import { generateDailyPlan } from './domain/planner'
+import { clearAuthSession, createAuth, getAuthMode, verifyAuth } from './domain/auth'
 import {
   deleteNote,
   deleteNoteEmbedding,
@@ -72,6 +73,13 @@ export default function App() {
   const [pendingCheckins, setPendingCheckins] = useState<Record<string, TaskCheckin>>({})
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
 
+  const [authMode, setAuthMode] = useState<'loading' | 'setup' | 'locked' | 'unlocked'>('loading')
+  const [authPassword, setAuthPassword] = useState('')
+  const [authConfirm, setAuthConfirm] = useState('')
+  const [authRemember, setAuthRemember] = useState(true)
+  const [authError, setAuthError] = useState('')
+  const [authWorking, setAuthWorking] = useState(false)
+
   const [noteEmbeddings, setNoteEmbeddings] = useState<Record<string, number[]>>({})
   const [semanticMatches, setSemanticMatches] = useState<Note[]>([])
   const [semanticStatus, setSemanticStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
@@ -88,6 +96,15 @@ export default function App() {
   }
 
   useEffect(() => {
+    const loadAuth = async () => {
+      const mode = await getAuthMode()
+      setAuthMode(mode)
+    }
+    loadAuth()
+  }, [])
+
+  useEffect(() => {
+    if (authMode !== 'unlocked') return
     const load = async () => {
       await initDefaults()
       const [loadedSections, loadedTasks, loadedNotes, embeddings, semanticPref] = await Promise.all([
@@ -152,9 +169,8 @@ export default function App() {
       setDailyPlan(plan)
       setSelectedPlanDate(today)
     }
-
     load()
-  }, [])
+  }, [authMode])
 
   useEffect(() => {
     setMeta('semanticEnabled', semanticEnabled ? 'true' : 'false')
@@ -415,6 +431,58 @@ export default function App() {
     setDraggedTaskId(null)
   }
 
+
+  const handleLock = () => {
+    clearAuthSession()
+    setAuthMode('locked')
+    setAuthPassword('')
+    setAuthConfirm('')
+    setAuthError('')
+  }
+
+  const handleSetupAuth = async () => {
+    if (authWorking) return
+    setAuthError('')
+    if (authPassword.length < 6) {
+      setAuthError('Password must be at least 6 characters.')
+      return
+    }
+    if (authPassword !== authConfirm) {
+      setAuthError('Passwords do not match.')
+      return
+    }
+    try {
+      setAuthWorking(true)
+      await createAuth(authPassword, authRemember)
+      setAuthMode('unlocked')
+      setAuthPassword('')
+      setAuthConfirm('')
+    } catch (error) {
+      setAuthError('Unable to create login. Try again.')
+    } finally {
+      setAuthWorking(false)
+    }
+  }
+
+  const handleLoginAuth = async () => {
+    if (authWorking) return
+    setAuthError('')
+    try {
+      setAuthWorking(true)
+      const ok = await verifyAuth(authPassword, authRemember)
+      if (!ok) {
+        setAuthError('Incorrect password.')
+        return
+      }
+      setAuthMode('unlocked')
+      setAuthPassword('')
+    } catch (error) {
+      setAuthError('Unable to unlock. Try again.')
+    } finally {
+      setAuthWorking(false)
+    }
+  }
+
   const openNewTask = () => {
     const fallback = activeSection?.id ?? sections[0]?.id
     setCreatingTaskForSection(fallback)
@@ -489,6 +557,54 @@ export default function App() {
   const isToday = selectedPlanDate === todayISO()
   const noteResults = semanticMatches.length > 0 ? semanticMatches : searchResults.notes
 
+  if (authMode !== 'unlocked') {
+    return (
+      <div className="auth-shell">
+        <div className="auth-card">
+          <h2>Planner Login</h2>
+          <p className="muted">Local-only access for this browser. You can add cloud auth later.</p>
+          {authMode === "loading" ? (
+            <p className="muted">Loading…</p>
+          ) : authMode === "setup" ? (
+            <>
+              <label className="auth-field">
+                <span>Create password</span>
+                <input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} />
+              </label>
+              <label className="auth-field">
+                <span>Confirm password</span>
+                <input type="password" value={authConfirm} onChange={(event) => setAuthConfirm(event.target.value)} />
+              </label>
+              <label className="auth-checkbox">
+                <input type="checkbox" checked={authRemember} onChange={(event) => setAuthRemember(event.target.checked)} />
+                Remember this device
+              </label>
+              {authError && <p className="auth-error">{authError}</p>}
+              <button className="primary-button" onClick={handleSetupAuth} disabled={authWorking}>
+                Create Login
+              </button>
+            </>
+          ) : (
+            <>
+              <label className="auth-field">
+                <span>Password</span>
+                <input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} />
+              </label>
+              <label className="auth-checkbox">
+                <input type="checkbox" checked={authRemember} onChange={(event) => setAuthRemember(event.target.checked)} />
+                Remember this device
+              </label>
+              {authError && <p className="auth-error">{authError}</p>}
+              <button className="primary-button" onClick={handleLoginAuth} disabled={authWorking}>
+                Unlock
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -538,6 +654,9 @@ export default function App() {
             </button>
             <button className="ghost-button" onClick={openNewNote}>
               New Note
+            </button>
+            <button className="ghost-button" onClick={handleLock}>
+              Lock
             </button>
           </div>
         </header>
@@ -774,6 +893,8 @@ export default function App() {
     </div>
   )
 }
+
+
 
 
 
