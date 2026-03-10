@@ -1,0 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap');
+
+:root {
+  font-family: 'Source Sans 3', system-ui, sans-serif;
+  color-scheme: light;
+  --bg: #e7edf8;
+  --panel: #ffffff;
+  --panel-alt: #f5f8ff;
+  --text: #101a30;
+  --muted: #4b5a77;
+  --accent: #1d4ed8;
+  --accent-strong: #1e3a8a;
+  --coral: #f26a60;
+  --danger: #c54840;
+  --border: rgba(16, 26, 48, 0.16);
+  --shadow: 0 24px 40px rgba(8, 24, 50, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at top, #ffffff 0%, #e7edf8 45%, #d8e1f5 100%);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 14px;
+}
+
+input,
+select,
+textarea {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--text);
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  border: none;
+  cursor: pointer;
+}
+
+img {
+  max-width: 100%;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
