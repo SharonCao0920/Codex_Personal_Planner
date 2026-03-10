@@ -100,7 +100,7 @@ export default function App() {
       setSections(loadedSections)
       setTasks(loadedTasks)
       setNotes(loadedNotes)
-      setSelectedNoteDate(loadedNotes[0]?.date ?? todayISO())
+      setSelectedNoteDate(todayISO())
       if (semanticPref) setSemanticEnabled(semanticPref === 'true')
       setNoteEmbeddings(
         embeddings.reduce<Record<string, number[]>>((acc, item) => {
@@ -499,9 +499,6 @@ export default function App() {
           <p>Balance by design.</p>
         </div>
         <div className="sidebar-section">
-          <button className={activeTab === tabs.home ? 'active' : ''} onClick={() => setActiveTab(tabs.home)}>
-            Home
-          </button>
           <button className={activeTab === tabs.plan ? 'active' : ''} onClick={() => setActiveTab(tabs.plan)}>
             Suggested Plan
           </button>
@@ -553,7 +550,7 @@ export default function App() {
                 <div>
                   <h3>Tasks</h3>
                   {searchResults.tasks.map((task) => (
-                    <TaskCard key={task.id} task={task} onClick={() => setEditingTask(task)} draggable onDragStart={() => handleDragStart(task.id)} onDragEnd={handleDragEnd} />
+                    <TaskCard key={task.id} task={task} onClick={() => setEditingTask(task)} draggable onDragStart={() => handleDragStart(task.id)} onDragEnd={handleDragEnd} style={{ background: getSectionColor(task.sectionId) }} />
                   ))}
                   {searchResults.tasks.length === 0 && <p className="muted">No tasks found.</p>}
                 </div>
@@ -620,6 +617,7 @@ export default function App() {
               plan={dailyPlan}
               tasks={tasks}
               sections={sections}
+              getSectionColor={getSectionColor}
               selectedDate={selectedPlanDate}
               availableDates={planDates}
               isToday={isToday}
@@ -671,6 +669,7 @@ export default function App() {
                             draggable
                             onDragStart={() => handleDragStart(task.id)}
                             onDragEnd={handleDragEnd}
+                            style={{ background: getSectionColor(task.sectionId) }}
                           />
                         ))}
                       {tasks.filter((task) => task.sectionId === activeSection.id && task.status === status).length === 0 && (
@@ -726,7 +725,7 @@ export default function App() {
 
       {pendingCheckinPlan && (
         <Modal title="Yesterday's Plan Check-in" onClose={() => {}}>
-          <p>Before today’s plan is created, review yesterday’s progress.</p>
+          <p>Before today's plan is created, review yesterday's progress.</p>
           <div className="checkin-list">
             {tasks
               .filter((task) => pendingCheckinPlan.taskIds.includes(task.id))
@@ -776,3 +775,9 @@ export default function App() {
     </div>
   )
 }
+
+
+
+
+
+

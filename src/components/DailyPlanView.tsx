@@ -39,6 +39,7 @@ export const DailyPlanView = ({
   plan,
   tasks,
   sections,
+  getSectionColor,
   selectedDate,
   availableDates,
   isToday,
@@ -49,6 +50,7 @@ export const DailyPlanView = ({
   plan?: DailyPlan
   tasks: Task[]
   sections: Section[]
+  getSectionColor: (sectionId: string) => string
   selectedDate: string
   availableDates: string[]
   isToday: boolean
@@ -103,7 +105,7 @@ export const DailyPlanView = ({
         <div className="daily-plan-content">
           <div className="daily-plan-list">
             {sortedTasks.map((task) => (
-              <TaskCard key={task.id} task={task} onClick={() => onEditTask(task)} />
+              <TaskCard key={task.id} task={task} onClick={() => onEditTask(task)} style={{ background: getSectionColor(task.sectionId) }} />
             ))}
             {sortedTasks.length === 0 && <p className="muted">No tasks match this plan.</p>}
           </div>
@@ -185,6 +187,7 @@ export const DailyPlanView = ({
     </div>
   )
 }
+
 
 
 
