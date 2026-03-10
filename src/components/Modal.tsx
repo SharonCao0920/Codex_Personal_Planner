@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import './Modal.css'
 
 export const Modal = ({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) => {
@@ -14,3 +14,4 @@ export const Modal = ({ title, children, onClose }: { title: string; children: R
     </div>
   )
 }
+

@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react'
-import type { Note, Section } from '../domain/types'
+import type { Note } from '../domain/types'
 
 export const NotesWorkspace = ({
   notes,
-  sections,
   selectedDate,
   onDateChange,
   onEdit,
@@ -17,7 +16,6 @@ export const NotesWorkspace = ({
   semanticError,
 }: {
   notes: Note[]
-  sections: Section[]
   selectedDate: string
   onDateChange: (date: string) => void
   onEdit: (note: Note) => void
@@ -121,3 +119,4 @@ const truncate = (value: string, length: number) => {
   if (value.length <= length) return value
   return `${value.slice(0, length).trim()}...`
 }
+
