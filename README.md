@@ -3,6 +3,12 @@
 A web-first personal manager for work, life, and health planning. It includes section-based task boards, daily plan suggestions, daily notes, and local semantic search for notes.
 
 ## Features
+- Sections with To Do / In Progress / Done workflow
+- Suggested daily plan (locked once created)
+- Daily notes with tags and date filtering
+- Per-task progress check-in and daily completion tracking
+- Local semantic search for notes (no cloud)
+
 
 ## Tech Stack
 - React + TypeScript + Vite
