@@ -3,6 +3,14 @@
 A web-first personal manager for work, life, and health planning. It includes section-based task boards, daily plan suggestions, daily notes, and local semantic search for notes.
 
 ## Features
+
+## Screenshots
+![Landing](docs/screenshots/1_LandingPage.png)
+![Home](docs/screenshots/2_Home.png)
+![Work](docs/screenshots/3_Work.png)
+![Plan](docs/screenshots/4_Plan.png)
+![Notes](docs/screenshots/5_Notes.png)
+
 - Sections with To Do / In Progress / Done workflow
 - Suggested daily plan (locked once created)
 - Daily notes with tags and date filtering
