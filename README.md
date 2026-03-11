@@ -4,6 +4,11 @@ A web-first personal manager for work, life, and health planning. It includes se
 
 ## Features
 
+## Tech Stack
+- React + TypeScript + Vite
+- IndexedDB for local storage
+- Local embeddings via `@xenova/transformers`
+
 ## Screenshots
 ![Landing](docs/screenshots/1_LandingPage.png)
 ![Home](docs/screenshots/2_Home.png)
@@ -11,16 +16,6 @@ A web-first personal manager for work, life, and health planning. It includes se
 ![Plan](docs/screenshots/4_Plan.png)
 ![Notes](docs/screenshots/5_Notes.png)
 
-- Sections with To Do / In Progress / Done workflow
-- Suggested daily plan (locked once created)
-- Daily notes with tags and date filtering
-- Per-task progress check-in and daily completion tracking
-- Local semantic search for notes (no cloud)
-
-## Tech Stack
-- React + TypeScript + Vite
-- IndexedDB for local storage
-- Local embeddings via `@xenova/transformers`
 
 ## Getting Started
 
