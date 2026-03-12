@@ -68,7 +68,14 @@ export const generateDailyPlan = (params: {
     if (!task.recurrence) return task
     const updatedRecurrence = ensureNextDueDate(task.recurrence, date)
     if (updatedRecurrence.nextDueDate !== task.recurrence.nextDueDate) {
-      const next = { ...task, recurrence: updatedRecurrence }
+      const next: Task = {
+        ...task,
+        status: 'todo',
+        progress: undefined,
+        dueDate: updatedRecurrence.nextDueDate,
+        recurrence: updatedRecurrence,
+        updatedAt: new Date().toISOString(),
+      }
       updatedTasks.push(next)
       return next
     }
@@ -90,3 +97,4 @@ export const generateDailyPlan = (params: {
 
   return { plan, updatedTasks }
 }
+

@@ -55,6 +55,13 @@ const computeCompletion = (checkins: Record<string, TaskCheckin>): number => {
   return Math.round(total / entries.length)
 }
 
+const isRecentDone = (task: Task, days = 7): boolean => {
+  if (task.status !== 'done') return true
+  const base = task.updatedAt ?? task.createdAt
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
+  return new Date(base).getTime() >= cutoff
+}
+
 export default function App() {
   const [sections, setSections] = useState<Section[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
@@ -777,7 +784,7 @@ export default function App() {
                     <h3>{statusLabels[status]}</h3>
                     <div className="column-list">
                       {tasks
-                        .filter((task) => task.status === status)
+                        .filter((task) => task.status === status && (status !== 'done' || isRecentDone(task)))
                         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
                         .map((task) => (
                           <TaskCard
@@ -791,7 +798,7 @@ export default function App() {
                             style={{ background: getSectionColor(task.sectionId) }}
                           />
                         ))}
-                      {tasks.filter((task) => task.status === status).length === 0 && (
+                      {tasks.filter((task) => task.status === status && (status !== 'done' || isRecentDone(task))).length === 0 && (
                         <p className="muted">No tasks yet.</p>
                       )}
                     </div>
@@ -846,7 +853,7 @@ export default function App() {
                     <h3>{statusLabels[status]}</h3>
                     <div className="column-list">
                       {tasks
-                        .filter((task) => task.sectionId === activeSection.id && task.status === status)
+                        .filter((task) => task.sectionId === activeSection.id && task.status === status && (status !== 'done' || isRecentDone(task)))
                         .map((task) => (
                           <TaskCard
                             key={task.id}
@@ -858,7 +865,7 @@ export default function App() {
                             style={{ background: getSectionColor(task.sectionId) }}
                           />
                         ))}
-                      {tasks.filter((task) => task.sectionId === activeSection.id && task.status === status).length === 0 && (
+                      {tasks.filter((task) => task.sectionId === activeSection.id && task.status === status && (status !== 'done' || isRecentDone(task))).length === 0 && (
                         <p className="muted">No tasks yet.</p>
                       )}
                     </div>
@@ -961,6 +968,8 @@ export default function App() {
     </div>
   )
 }
+
+
 
 
 
