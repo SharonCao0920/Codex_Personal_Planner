@@ -23,9 +23,9 @@ const candidateWeight = (task: Task, today: string): number => {
 }
 
 const isCandidate = (task: Task, today: string): boolean => {
+  if (task.recurrence && task.recurrence.nextDueDate === today) return true
   if (task.status === 'in_progress') return true
-  if (task.dueDate && daysBetween(today, task.dueDate) <= 5) return true
-  if (task.recurrence && task.recurrence.nextDueDate <= today) return true
+  if (task.status !== 'done' && task.dueDate && daysBetween(today, task.dueDate) <= 5) return true
   return false
 }
 
@@ -97,4 +97,6 @@ export const generateDailyPlan = (params: {
 
   return { plan, updatedTasks }
 }
+
+
 
